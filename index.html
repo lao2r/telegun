@@ -1,4 +1,4 @@
-<html><head><title>TeleGun - Decentralized P2P Chat</title>
+<html><head><base href="https://telegun.io/"><title>TeleGun - Decentralized P2P Chat</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
     @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
@@ -249,7 +249,7 @@ _____  ____  _     ____  __    _     _
         <p>Decentralized P2P Chat</p>
     </header>
     <main>
-        <div id="login-container" style="display: none;">
+        <div id="login-container">
             <form id="login-form">
                 <button type="button" id="generate-room-button">Generate Random Room Name</button>
                 <input type="text" id="room-input" placeholder="Enter room name" required="">
@@ -257,9 +257,9 @@ _____  ____  _     ____  __    _     _
                 <input type="submit" value="Enter">
             </form>
         </div>
-        <div id="chat-interface" style="display: block;">
-            <div id="room-info">Encrypted Channel: c5db37b8-0f52-30a7-8525-78d5a1a90c9a</div>
-            <div id="chat-container"><div class="message sent">OverpoweredUser: Good morning!</div></div>
+        <div id="chat-interface" style="display: none;">
+            <div id="room-info"></div>
+            <div id="chat-container"></div>
             <form id="message-form">
                 <input type="text" id="message-input" placeholder="Type your message..." required="">
                 <input type="submit" value="Transmit">
