@@ -1,9 +1,3 @@
-<html><head><title>TeleGun - Decentralized P2P Chat</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
-</style></head>
-<link rel="stylesheet" href="styles/style.css">
 <body>
     <header>
         <div class="ascii-art">
@@ -12,7 +6,12 @@ _____  ____  _     ____  __    _     _
  |_|  |_|__ |_|__ |_|__ \_\_/ \_\_/ |_| \|
         </div>
         <p>Decentralized P2P Chat</p>
-    </header>
+    <a href="https://github.com/lao2r/telegun" target="_blank" rel="noopener noreferrer" style="position: static;color: #0f0;">
+        <svg height="32" width="32" viewBox="0 0 16 16" version="1.1" aria-hidden="true">
+            <path fill="#0f0" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+        </svg>
+    </a>
+</header>
     <main>
         <div id="login-container">
             <form id="login-form">
@@ -20,8 +19,8 @@ _____  ____  _     ____  __    _     _
                     Generate Random Room Name
                     <span class="popup-text">Copied to clipboard</span>
                 </button>
-                <input type="text" id="room-input" placeholder="Enter room name" required>
-                <input type="text" id="nickname-input" placeholder="Enter your handle" required>
+                <input type="text" id="room-input" placeholder="Enter room name" required="">
+                <input type="text" id="nickname-input" placeholder="Enter your handle" required="">
                 <input type="submit" value="Enter">
             </form>
         </div>
@@ -31,7 +30,7 @@ _____  ____  _     ____  __    _     _
             </div>
             <div id="chat-container"></div>
             <form id="message-form">
-                <input type="text" id="message-input" placeholder="Type your message..." required>
+                <input type="text" id="message-input" placeholder="Type your message..." required="">
                 <input type="submit" value="Transmit">
             </form>
             <button id="leave-button">Exit</button>
@@ -143,23 +142,52 @@ _____  ____  _     ____  __    _     _
         }
     });
 
-    function displayMessage(sender, content) {
+    function displayMessage(sender, content, timestamp) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message');
         messageElement.classList.add(sender === currentUser ? 'sent' : 'received');
-        messageElement.textContent = `${sender}: ${content}`;
+        
+        const senderSpan = document.createElement('span');
+        senderSpan.classList.add('sender');
+        senderSpan.textContent = sender;
+        
+        const contentSpan = document.createElement('span');
+        contentSpan.classList.add('content');
+        contentSpan.textContent = content;
+        
+        const timestampSpan = document.createElement('span');
+        timestampSpan.classList.add('timestamp');
+        timestampSpan.textContent = formatDate(timestamp);
+        
+        messageElement.appendChild(senderSpan);
+        messageElement.appendChild(document.createTextNode(': '));
+        messageElement.appendChild(contentSpan);
+        messageElement.appendChild(document.createElement('br'));
+        messageElement.appendChild(timestampSpan);
+        
         chatContainer.appendChild(messageElement);
         chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function formatDate(timestamp) {
+        const date = new Date(timestamp);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = String(date.getFullYear()).slice(-2);
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
     }
 
     function setupChatListeners() {
         if (chatRoom) {
             chatRoom.get('messages').map().on(function(message, id) {
-                if (message && message.sender && message.content && !processedMessages.has(id)) {
+                if (message && message.sender && message.content && message.timestamp && !processedMessages.has(id)) {
                     if (message._ && typeof message._['#'] === 'string') {
                         const messageRoom = message._['#'].split('/')[0];
                         if (messageRoom === `telegun-chat-room-${currentRoom}` && !blockedRooms.has(currentRoom)) {
-                            displayMessage(message.sender, message.content);
+                            displayMessage(message.sender, message.content, message.timestamp);
                             processedMessages.add(id);
                         }
                     }
@@ -168,4 +196,3 @@ _____  ____  _     ____  __    _     _
         }
     }
 </script>
-</body
