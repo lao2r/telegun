@@ -1,5 +1,4 @@
-
-    body {
+body {
         font-family: 'VT323', monospace;
         margin: 0;
         padding: 0;
@@ -192,6 +191,19 @@
     }
     .message.received {
         background-color: rgba(0, 255, 0, 0.1);
+    }
+    .message .sender {
+        color: #07ff02;
+        font-weight: normal;
+        text-shadow: -1px 1px black;
+    }
+    .message .content {
+        color: #0f0;
+    }
+    .message .timestamp {
+        color: #00fbfb;
+        font-size: 0.8em;
+        text-shadow: -1px 1px black;
     }
     #room-info {
         background-color: rgba(0, 255, 0, 0.1);
