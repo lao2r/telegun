@@ -40,184 +40,203 @@ _____    _      _____ _   _ _   _
         </div>
     </div>
 <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
 <script>
-        const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+    const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+    const loginContainer = document.getElementById('login-container');
+    const chatInterface = document.getElementById('chat-interface');
+    const chatContainer = document.getElementById('chat-container');
+    const roomInput = document.getElementById('room-input');
+    const nicknameInput = document.getElementById('nickname-input');
+    const messageInput = document.getElementById('message-input');
+    const loginButton = document.getElementById('login-button');
+    const sendButton = document.getElementById('send-button');
+    const leaveButton = document.getElementById('leave-button');
+    const roomInfo = document.getElementById('room-info');
+    const channelName = document.getElementById('channel-name');
+    const generateRoomButton = document.getElementById('generate-room-button');
 
-        const loginContainer = document.getElementById('login-container');
-        const chatInterface = document.getElementById('chat-interface');
-        const chatContainer = document.getElementById('chat-container');
-        const roomInput = document.getElementById('room-input');
-        const nicknameInput = document.getElementById('nickname-input');
-        const messageInput = document.getElementById('message-input');
-        const loginButton = document.getElementById('login-button');
-        const sendButton = document.getElementById('send-button');
-        const leaveButton = document.getElementById('leave-button');
-        const roomInfo = document.getElementById('room-info');
-        const channelName = document.getElementById('channel-name');
-        const generateRoomButton = document.getElementById('generate-room-button');
+    let currentUser = null;
+    let currentRoom = null;
+    let chatRoom = null;
+    const processedMessages = new Set();
+    const blockedRooms = new Set();
 
-        let currentUser = null;
-        let currentRoom = null;
-        let chatRoom = null;
-        const processedMessages = new Set();
-        const blockedRooms = new Set();
-
-        function generateUUID() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
-        function showPopup(element, message) {
-            const popup = document.createElement('div');
-            popup.className = 'popup-text';
-            popup.textContent = message;
-            element.appendChild(popup);
-            popup.style.display = 'block';
-            setTimeout(() => {
-                popup.style.display = 'none';
-                popup.remove();
-            }, 2000);
-        }
-
-        generateRoomButton.addEventListener('click', () => {
-            const randomRoomName = generateUUID();
-            roomInput.value = randomRoomName;
-            navigator.clipboard.writeText(randomRoomName).then(() => {
-                showPopup(generateRoomButton, 'COPIED TO CLIPBOARD');
-            });
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
         });
+    }
 
-        roomInfo.addEventListener('click', () => {
-            navigator.clipboard.writeText(currentRoom).then(() => {
-                showPopup(roomInfo, 'COPIED TO CLIPBOARD');
-            });
+    function showPopup(element, message) {
+        const popup = document.createElement('div');
+        popup.className = 'popup-text';
+        popup.textContent = message;
+        element.appendChild(popup);
+        popup.style.display = 'block';
+        setTimeout(() => {
+            popup.style.display = 'none';
+            popup.remove();
+        }, 2000);
+    }
+
+    generateRoomButton.addEventListener('click', () => {
+        const randomRoomName = generateUUID();
+        roomInput.value = randomRoomName;
+        navigator.clipboard.writeText(randomRoomName).then(() => {
+            showPopup(generateRoomButton, 'COPIED TO CLIPBOARD');
         });
+    });
 
-        loginButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            const roomName = roomInput.value.trim();
-            const nickname = nicknameInput.value.trim();
-            if (roomName && nickname) {
-                currentUser = nickname;
-                currentRoom = roomName;
-                chatRoom = gun.get(`telegun-chat-room-${roomName}`);
-                loginContainer.style.display = 'none';
-                chatInterface.style.display = 'block';
-                channelName.textContent = roomName;
-                chatRoom.get('users').set({ [nickname]: Date.now() });
-                blockedRooms.delete(currentRoom);
-                setupChatListeners();
-            }
+    roomInfo.addEventListener('click', () => {
+        navigator.clipboard.writeText(currentRoom).then(() => {
+            showPopup(roomInfo, 'COPIED TO CLIPBOARD');
         });
+    });
 
-        function sendMessage() {
-            const message = messageInput.value.trim();
-            if (message && currentUser) {
-                const messageId = Date.now().toString();
-                chatRoom.get('messages').get(messageId).put({
-                    sender: currentUser,
-                    content: message,
-                    timestamp: Date.now()
-                });
-                messageInput.value = '';
-            }
+    loginButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        const roomName = roomInput.value.trim();
+        const nickname = nicknameInput.value.trim();
+        if (roomName && nickname) {
+            currentUser = nickname;
+            currentRoom = roomName;
+            chatRoom = gun.get(`telegun-chat-room-${roomName}`);
+            loginContainer.style.display = 'none';
+            chatInterface.style.display = 'block';
+            channelName.textContent = roomName;
+            chatRoom.get('users').set({ [nickname]: Date.now() });
+            blockedRooms.delete(currentRoom);
+            setupChatListeners();
+            startMessageCleanup();
         }
+    });
 
-        sendButton.addEventListener('click', (e) => {
+    function sendMessage() {
+        const message = messageInput.value.trim();
+        if (message && currentUser) {
+            const messageId = Date.now().toString();
+            const expirationTime = Date.now() + 900000; // 15 minutes
+            chatRoom.get('messages').get(messageId).put({
+                sender: currentUser,
+                content: message,
+                timestamp: Date.now(),
+                expireTime: expirationTime
+            });
+            messageInput.value = '';
+        }
+    }
+
+    sendButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        sendMessage();
+    });
+
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
             e.preventDefault();
             sendMessage();
-        });
-
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-
-        leaveButton.addEventListener('click', () => {
-            if (currentUser && chatRoom) {
-                chatRoom.get('users').get(currentUser).put(null);
-                blockedRooms.add(currentRoom);
-                currentUser = null;
-                currentRoom = null;
-                chatRoom = null;
-                chatContainer.innerHTML = '';
-                chatInterface.style.display = 'none';
-                loginContainer.style.display = 'block';
-                roomInput.value = '';
-                nicknameInput.value = '';
-                processedMessages.clear();
-            }
-        });
-
-        function displayMessage(sender, content, timestamp) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message');
-
-            const senderSpan = document.createElement('span');
-            senderSpan.classList.add('sender');
-            senderSpan.textContent = sender;
-
-            const contentSpan = document.createElement('span');
-            contentSpan.classList.add('content');
-            contentSpan.textContent = `: ${content}`;
-
-            const timestampSpan = document.createElement('span');
-            timestampSpan.classList.add('timestamp');
-            timestampSpan.textContent = ` [${formatDate(timestamp)}]`;
-
-            messageElement.appendChild(senderSpan);
-            messageElement.appendChild(contentSpan);
-            messageElement.appendChild(timestampSpan);
-
-            chatContainer.appendChild(messageElement);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
         }
+    });
 
-        function formatDate(timestamp) {
-            const date = new Date(timestamp);
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = String(date.getFullYear()).slice(-2);
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            return `${day}.${month}.${year} ${hours}:${minutes}`;
+    leaveButton.addEventListener('click', () => {
+        if (currentUser && chatRoom) {
+            chatRoom.get('users').get(currentUser).put(null);
+            blockedRooms.add(currentRoom);
+            currentUser = null;
+            currentRoom = null;
+            chatRoom = null;
+            chatContainer.innerHTML = '';
+            chatInterface.style.display = 'none';
+            loginContainer.style.display = 'block';
+            roomInput.value = '';
+            nicknameInput.value = '';
+            processedMessages.clear();
         }
+    });
 
-        const messageQueue = [];
-        let isProcessing = false;
+    function displayMessage(id, sender, content, timestamp) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message');
+        messageElement.setAttribute('data-id', id);
 
-        function processNextMessage() {
-            if (messageQueue.length > 0 && !isProcessing) {
-                isProcessing = true;
-                const { message, id } = messageQueue.shift();
-                processMessage(message, id);
-                isProcessing = false;
-                setTimeout(processNextMessage, 50);  // Обработка следующего сообщения через 50 мс
-            }
+        const senderSpan = document.createElement('span');
+        senderSpan.classList.add('sender');
+        senderSpan.textContent = sender;
+
+        const contentSpan = document.createElement('span');
+        contentSpan.classList.add('content');
+        contentSpan.textContent = `: ${content}`;
+
+        const timestampSpan = document.createElement('span');
+        timestampSpan.classList.add('timestamp');
+        timestampSpan.textContent = ` [${formatDate(timestamp)}]`;
+
+        messageElement.appendChild(senderSpan);
+        messageElement.appendChild(contentSpan);
+        messageElement.appendChild(timestampSpan);
+        chatContainer.appendChild(messageElement);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function formatDate(timestamp) {
+        const date = new Date(timestamp);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = String(date.getFullYear()).slice(-2);
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${day}.${month}.${year} ${hours}:${minutes}`;
+    }
+
+    const messageQueue = [];
+    let isProcessing = false;
+
+    function processNextMessage() {
+        if (messageQueue.length > 0 && !isProcessing) {
+            isProcessing = true;
+            const { message, id } = messageQueue.shift();
+            processMessage(message, id);
+            isProcessing = false;
+            setTimeout(processNextMessage, 50); // Process next message after 50 ms
         }
+    }
 
-        function processMessage(message, id) {
-            if (message && message.sender && message.content && message.timestamp && !processedMessages.has(id)) {
-                if (message._ && typeof message._['#'] === 'string') {
-                    const messageRoom = message._['#'].split('/')[0];
-                    if (messageRoom === `telegun-chat-room-${currentRoom}` && !blockedRooms.has(currentRoom)) {
-                        displayMessage(message.sender, message.content, message.timestamp);
-                        processedMessages.add(id);
-                    }
+    function processMessage(message, id) {
+        if (message && message.sender && message.content && message.timestamp && !processedMessages.has(id)) {
+            if (message._ && typeof message._['#'] === 'string') {
+                const messageRoom = message._['#'].split('/')[0];
+                if (messageRoom === `telegun-chat-room-${currentRoom}` && !blockedRooms.has(currentRoom)) {
+                    displayMessage(id, message.sender, message.content, message.timestamp);
+                    processedMessages.add(id);
                 }
             }
         }
+    }
 
-        function setupChatListeners() {
+    function setupChatListeners() {
+        if (chatRoom) {
+            chatRoom.get('messages').map().on(function (message, id) {
+                messageQueue.push({ message, id });
+                processNextMessage();
+            });
+        }
+    }
+
+    function startMessageCleanup() {
+        setInterval(() => {
             if (chatRoom) {
-                chatRoom.get('messages').map().on(function (message, id) {
-                    messageQueue.push({ message, id });
-                    processNextMessage();
+                chatRoom.get('messages').map((message, id) => {
+                    if (message && message.expireTime && Date.now() > message.expireTime) {
+                        chatRoom.get('messages').get(id).put(null);
+                        const messageElement = document.querySelector(`[data-id="${id}"]`);
+                        if (messageElement) {
+                            messageElement.remove();
+                        }
+                    }
                 });
             }
-        }
+        }, 60000); // Check for expired messages every 60 seconds
+    }
 </script></body></html>
